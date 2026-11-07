@@ -1,33 +1,53 @@
 package SlangWord;
 
-import SlangWord.io.DataIssue;
 import SlangWord.io.LoadResult;
 import SlangWord.io.SlangFileReader;
+import SlangWord.service.DictionaryService;
+import SlangWord.ui.ConsoleMenu;
 
-public class Main {
-    public static void main(String[] args) {
-        String fileName = "../data/slang.txt";
+import java.io.File;
+import java.io.IOException;
 
-        SlangFileReader reader = new SlangFileReader();
-        LoadResult result = reader.readFile(fileName);
+public class Main
+{
+    public static void main(String[] args)
+    {
+        String sourceFile = "data/slang.txt";
 
-        System.out.println("=== KET QUA DOC FILE ===");
-        System.out.println("So ban ghi: " + result.getEntris().size());
-        System.out.println("So van de: " + result.getIssue().size());
+        // Dung ten moi de khong nham voi file luu theo cau truc cu.
+        String savedFile = "data/dictionary-word-v1.dat";
 
-        System.out.println("\n=== 5 BAN GHI DAU ===");
+        try
+        {
+            DictionaryService service;
 
-        int count = Math.min(5, result.getEntris().size());
+            if (new File(savedFile).exists())
+            {
+                service = DictionaryService.load(savedFile);
+                System.out.println("Da tai chi muc.");
+            }
+            else
+            {
+                SlangFileReader reader = new SlangFileReader();
+                LoadResult result = reader.readFile(sourceFile);
 
-        for (int i = 0; i < count; i++) {
-            SlangEntry entry = result.getEntris().get(i);
-            System.out.println(entry);
+                if (result.getEntris().isEmpty())
+                {
+                    System.out.println("Khong co du lieu hop le.");
+                    return;
+                }
+
+                service = new DictionaryService(result.getEntris());
+                service.save(savedFile);
+
+                System.out.println("Da tao va luu chi muc.");
+            }
+
+            new ConsoleMenu(service).run();
         }
-
-        System.out.println("\n=== CAC DONG CO VAN DE ===");
-
-        for (DataIssue issue : result.getIssue()) {
-            System.out.println(issue);
+        catch (IOException e)
+        {
+            System.out.println("Loi: " + e.getMessage());
         }
     }
 }

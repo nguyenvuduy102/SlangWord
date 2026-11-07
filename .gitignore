@@ -1,0 +1,9 @@
+# Compiled Java files
+*.class
+
+agent.md
+
+# Java build output
+/bin/
+/out/
+/build/

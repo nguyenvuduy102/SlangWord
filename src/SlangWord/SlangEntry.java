@@ -13,6 +13,19 @@ public class SlangEntry {
          this. definitions = definitions;
     }
 
+    public long getId() {
+        return this.id;
+    }
+
+    public String getWord() {
+        return this.word;
+    }
+
+    public List<String> getDefinitions() {
+        return this.definitions;
+    }
+
+
     @Override 
     public String toString() {
         return id + "| " + word + " | " + String.join(";", definitions);

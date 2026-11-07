@@ -12,7 +12,7 @@ import java.util.Set;
 
 public class SlangFileReader {
    
-    public  LoadResult readFile(String fileName) {
+    public  LoadResult readFile(String fileName) throws IOException {
         LoadResult result = new LoadResult();
         BufferedReader br;
         Set<String> seenWords = new HashSet<>();
@@ -27,11 +27,7 @@ public class SlangFileReader {
             while(true) {
                 str = br.readLine();
                 lineNumber++;
-                
-                // if(!seenWords.add(str)) {
-                //     DataIssue is = new DataIssue(lineNumber, str, "duplicate slangword");
-                //     result.addDataIssue(is);
-                // }
+
                 if(str == null) break;
 
                 int pos = str.indexOf('`');
@@ -74,18 +70,14 @@ public class SlangFileReader {
                 result.addEntry(se);
 
 
-
-
             }
             
             br.close();
             
-
         } catch(IOException e) {
             System.out.println("err =  " + e.toString());
+            throw e;
         }
-
-
         return result;
 
 
