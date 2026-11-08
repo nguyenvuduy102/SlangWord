@@ -32,7 +32,7 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        String sourceFile = "data/slang.txt";
+        String sourceFile = "data/slang_test.txt";
         String savedFile = "data/dictionary-word-v2.dat";
 
         try {

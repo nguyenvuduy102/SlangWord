@@ -53,7 +53,6 @@ public class DictionaryPanel extends JPanel
     private final String savedFile;
     private final CardLayout viewLayout = new CardLayout();
     private final JPanel views = new JPanel(viewLayout);
-    private final JToolBar toolbar;
     private final SearchHistoryPanel historyPanel;
     private final QuizPanel quizPanel;
 
@@ -115,8 +114,6 @@ public class DictionaryPanel extends JPanel
         this.sourceFile = sourceFile;
 
         setPreferredSize(new Dimension(1340, 550));
-        toolbar = createToolbar();
-        add(toolbar, BorderLayout.PAGE_START);
 
         JPanel dictionary = new JPanel(new BorderLayout(6, 0));
         dictionary.add(createWorkspace(), BorderLayout.CENTER);
@@ -211,8 +208,12 @@ public class DictionaryPanel extends JPanel
         top.add(createRandomPanel());
         top.add(createSearchPanel());
 
+        JPanel header = new JPanel(new BorderLayout(0, 4));
+        header.add(createToolbar(), BorderLayout.PAGE_START);
+        header.add(top, BorderLayout.CENTER);
+
         JPanel workspace = new JPanel(new BorderLayout(0, 5));
-        workspace.add(top, BorderLayout.PAGE_START);
+        workspace.add(header, BorderLayout.PAGE_START);
         workspace.add(createTablePanel(), BorderLayout.CENTER);
         return workspace;
     }
@@ -643,7 +644,6 @@ public class DictionaryPanel extends JPanel
         boolean history = "HISTORY".equals(view);
         boolean quiz = "QUIZ".equals(view);
 
-        toolbar.setVisible(dictionary);
         allButton.setBackground(dictionary ? new Color(0xDCD8CB) : BEIGE);
         historyButton.setBackground(history ? new Color(0xC7D7EC) : BEIGE);
         historyButton.setForeground(history ? NAVY : Color.BLACK);
