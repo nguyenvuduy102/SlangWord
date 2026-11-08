@@ -742,7 +742,7 @@ public class DictionaryPanel extends JPanel
     private void deleteSelected() {
         SlangEntry entry = selectedEntry();
 
-        if (entry == null || !confirm("Xóa bản ghi này?\n" + entry)) {
+        if (entry == null || !DeleteConfirmation.show(this, entry)) {
             return;
         }
 
