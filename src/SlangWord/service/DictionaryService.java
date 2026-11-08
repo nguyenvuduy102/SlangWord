@@ -1,8 +1,10 @@
 package SlangWord.service;
 
 import SlangWord.QuizQuestion;
+import SlangWord.SearchHistoryEntry;
 import SlangWord.SlangEntry;
 import SlangWord.io.LoadResult;
+import SlangWord.io.SearchHistoryStore;
 import SlangWord.io.SlangFileReader;
 
 import java.io.BufferedInputStream;
@@ -32,7 +34,9 @@ public class DictionaryService {
 
     private final Map<Long, SlangEntry> entriesById = new HashMap<>();
     private final Map<String, Set<Long>> wordIndex = new HashMap<>();
-    private final List<String> searchHistory = new ArrayList<>();
+    private final List<SearchHistoryEntry> searchHistory = new ArrayList<>();
+    private SearchHistoryStore historyStore;
+    private String searchHistoryError;
 
     private DictionaryService() {
     }
@@ -49,16 +53,38 @@ public class DictionaryService {
         }
     }
 
-    public List<String> getSearchHistory() {
+    public void openSearchHistory(String filename) {
+        historyStore = new SearchHistoryStore(filename);
+
+        try {
+            List<SearchHistoryEntry> savedHistory = historyStore.load();
+            searchHistory.clear();
+            searchHistory.addAll(savedHistory);
+            searchHistoryError = null;
+        } catch (IOException e) {
+            searchHistoryError = "Không đọc được lịch sử: " + e.getMessage();
+        }
+    }
+
+    public List<SearchHistoryEntry> getSearchHistory() {
         return new ArrayList<>(searchHistory);
+    }
+
+    public int getSearchHistoryCount() {
+        return searchHistory.size();
+    }
+
+    public String getSearchHistoryError() {
+        return searchHistoryError;
     }
 
     public List<SlangEntry> searchByWord(String keyword) {
         List<SlangEntry> results = findByWord(keyword);
 
-        if (!results.isEmpty()) {
-            searchHistory.add(results.get(0).getWord());
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            recordSearch(keyword, SearchHistoryEntry.Mode.WORD, results);
         }
+
         return results;
     }
 
@@ -99,7 +125,55 @@ public class DictionaryService {
             }
         }
 
+        recordSearch(keyword, SearchHistoryEntry.Mode.DEFINITION, results);
         return results;
+    }
+
+    private void recordSearch(String keyword, SearchHistoryEntry.Mode mode,
+            List<SlangEntry> results) {
+        SearchHistoryEntry entry = new SearchHistoryEntry(
+                System.currentTimeMillis(), keyword.trim(), mode, results.size(),
+                historyPreview(mode, results));
+
+        searchHistory.add(entry);
+
+        if (historyStore != null) {
+            try {
+                historyStore.append(entry);
+                searchHistoryError = null;
+            } catch (IOException e) {
+                searchHistoryError = "Không lưu được lượt tra cứu: " + e.getMessage();
+            }
+        }
+    }
+
+    private String historyPreview(SearchHistoryEntry.Mode mode, List<SlangEntry> results) {
+        if (results.isEmpty()) {
+            return "";
+        }
+
+        Set<String> details = new LinkedHashSet<>();
+        int shown = Math.min(results.size(), 5);
+
+        for (int i = 0; i < shown; i++) {
+            SlangEntry entry = results.get(i);
+            if (mode == SearchHistoryEntry.Mode.WORD) {
+                details.add(String.join("; ", entry.getDefinitions()));
+            } else {
+                details.add(entry.getWord());
+            }
+        }
+
+        String prefix = mode == SearchHistoryEntry.Mode.DEFINITION ? "Matches: " : "";
+        String preview = prefix + String.join(
+                mode == SearchHistoryEntry.Mode.WORD ? " | " : ", ", details);
+
+        if (preview.length() > 300) {
+            int end = Character.isHighSurrogate(preview.charAt(299)) ? 299 : 300;
+            return preview.substring(0, end) + "…";
+        }
+
+        return results.size() > shown ? preview + " …" : preview;
     }
 
     public SlangEntry addWord(String word, List<String> definitions,

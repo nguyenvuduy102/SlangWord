@@ -1,6 +1,7 @@
 package SlangWord.ui;
 
 import SlangWord.QuizQuestion;
+import SlangWord.SearchHistoryEntry;
 import SlangWord.SlangEntry;
 import SlangWord.service.DictionaryService;
 
@@ -479,6 +480,10 @@ public class ConsoleMenu {
 
         double milliseconds = (System.nanoTime() - start) / 1_000_000.0;
 
+        if (service.getSearchHistoryError() != null) {
+            System.err.println(service.getSearchHistoryError());
+        }
+
         if (results.isEmpty()) {
             System.out.println("Khong tim thay.");
         } else {
@@ -493,17 +498,19 @@ public class ConsoleMenu {
     }
 
     private void showHistory() {
-        List<String> history = service.getSearchHistory();
+        List<SearchHistoryEntry> history = service.getSearchHistory();
 
         if (history.isEmpty()) {
             System.out.println("Chua co lich su tra cuu.");
             return;
         }
 
-        System.out.println("\n===== LICH SU TRA SLANG =====");
-
-        for (int i = 0; i < history.size(); i++) {
-            System.out.println((i + 1) + ". " + history.get(i));
+        System.out.println("\n===== LICH SU TRA CUU =====");
+        for (int i = history.size() - 1; i >= 0; i--) {
+            SearchHistoryEntry entry = history.get(i);
+            System.out.printf("%d. %s | %s | %s | %s | %s%n",
+                    history.size() - i, entry.getFormattedTime(), entry.getKeyword(),
+                    entry.getMode().getLabel(), entry.getResultLabel(), entry.getDetails());
         }
     }
 }

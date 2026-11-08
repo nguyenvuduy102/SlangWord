@@ -18,7 +18,7 @@ public class Main {
         DictionaryPanel.applyClassicStyle();
         JFrame.setDefaultLookAndFeelDecorated(true);
 
-        JFrame frame = new JFrame("Slang Word Dictionary v1.0 [Java Swing - Metal L&F]");
+        JFrame frame = new JFrame(DictionaryPanel.DICTIONARY_TITLE);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setContentPane(new DictionaryPanel(service, savedFile, sourceFile));
         frame.pack();
@@ -54,6 +54,8 @@ public class Main {
                 service.save(savedFile);
                 System.out.println("Da tao va luu chi muc.");
             }
+
+            service.openSearchHistory("data/search-history.tsv");
 
             SwingUtilities.invokeLater(new Runnable() {
                 @Override

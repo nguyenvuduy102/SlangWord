@@ -1,10 +1,10 @@
 package SlangWord.ui;
 
-import SlangWord.QuizQuestion;
 import SlangWord.SlangEntry;
 import SlangWord.service.DictionaryService;
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -36,14 +36,26 @@ import javax.swing.table.DefaultTableModel;
 
 public class DictionaryPanel extends JPanel
         implements ActionListener, ListSelectionListener {
-    private static final Color BEIGE = new Color(0xECE9D8);
-    private static final Color NAVY = new Color(0x0A246A);
+    public static final String DICTIONARY_TITLE =
+            "Slang Word Dictionary v1.0 [Java Swing - Metal L&F]";
+    private static final String HISTORY_TITLE =
+            "Lịch sử tra cứu Slang Words - [Java Swing - Metal L&F] (Chức năng 3)";
+    private static final String QUIZ_TITLE =
+            "Slang Word Quiz Game - [Java Swing - Metal L&F] (Chức năng 9 & 10)";
+
+    static final Color BEIGE = new Color(0xECE9D8);
+    static final Color NAVY = new Color(0x0A246A);
     private static final Color EDGE = new Color(0x808080);
-    private static final Color GRID = new Color(0xD4D0C8);
+    static final Color GRID = new Color(0xD4D0C8);
 
     private final DictionaryService service;
     private final String sourceFile;
     private final String savedFile;
+    private final CardLayout viewLayout = new CardLayout();
+    private final JPanel views = new JPanel(viewLayout);
+    private final JToolBar toolbar;
+    private final SearchHistoryPanel historyPanel;
+    private final QuizPanel quizPanel;
 
     private final JTextField keywordField = new JTextField() {
         @Override
@@ -72,6 +84,7 @@ public class DictionaryPanel extends JPanel
 
     private final JButton allButton = createButton("Tất cả Slang", "ALL");
     private final JButton historyButton = createButton("Lịch sử tìm kiếm", "HISTORY");
+    private final JButton quizButton = createButton("[Game] Đố vui Slang Word", "QUIZ", true);
     private final JButton editButton = createButton("[Chỉnh sửa]", "EDIT");
     private final JButton deleteButton = createButton("[Xóa từ này]", "DELETE");
     private final JButton firstButton = createButton("[|<]", "FIRST");
@@ -102,13 +115,22 @@ public class DictionaryPanel extends JPanel
         this.sourceFile = sourceFile;
 
         setPreferredSize(new Dimension(1340, 550));
-        add(createToolbar(), BorderLayout.PAGE_START);
+        toolbar = createToolbar();
+        add(toolbar, BorderLayout.PAGE_START);
+
+        JPanel dictionary = new JPanel(new BorderLayout(6, 0));
+        dictionary.add(createWorkspace(), BorderLayout.CENTER);
+        dictionary.add(createInspector(), BorderLayout.LINE_END);
+        historyPanel = new SearchHistoryPanel(service);
+        quizPanel = new QuizPanel(service);
+        views.add(dictionary, "DICTIONARY");
+        views.add(historyPanel, "HISTORY");
+        views.add(quizPanel, "QUIZ");
 
         JPanel body = new JPanel(new BorderLayout(6, 0));
         body.setBorder(BorderFactory.createEmptyBorder(4, 6, 6, 6));
         body.add(createNavigation(), BorderLayout.LINE_START);
-        body.add(createWorkspace(), BorderLayout.CENTER);
-        body.add(createInspector(), BorderLayout.LINE_END);
+        body.add(views, BorderLayout.CENTER);
         add(body, BorderLayout.CENTER);
 
         registerKeyboardAction(this, "ALL", KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0),
@@ -169,7 +191,6 @@ public class DictionaryPanel extends JPanel
         JPanel navigation = createTitledPanel("Danh mục");
         navigation.setPreferredSize(new Dimension(224, 0));
 
-        JButton quizButton = createButton("[Game] Đố vui Slang Word", "QUIZ", true);
         allButton.setFont(allButton.getFont().deriveFont(Font.BOLD));
         allButton.setForeground(NAVY);
         quizButton.setForeground(NAVY);
@@ -282,19 +303,7 @@ public class DictionaryPanel extends JPanel
         };
         table.getColumnModel().getColumn(1).setCellRenderer(wordCell);
 
-        table.getTableHeader().setDefaultRenderer(new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable source, Object value,
-                    boolean selected, boolean focused, int row, int column) {
-                super.getTableCellRendererComponent(source, value, selected, focused,
-                        row, column);
-                setBackground(new Color(0xE1DFD5));
-                setFont(source.getFont().deriveFont(Font.BOLD));
-                setHorizontalAlignment(column == 0 ? SwingConstants.CENTER : SwingConstants.LEFT);
-                setBorder(raisedBorder(3, 5));
-                return this;
-            }
-        });
+        applyTableHeader(table);
 
         JScrollPane scroll = new JScrollPane(table);
         scroll.setColumnHeaderView(table.getTableHeader());
@@ -328,6 +337,22 @@ public class DictionaryPanel extends JPanel
         panel.add(scroll, BorderLayout.CENTER);
         panel.add(footer, BorderLayout.PAGE_END);
         return panel;
+    }
+
+    static void applyTableHeader(JTable table) {
+        table.getTableHeader().setDefaultRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable source, Object value,
+                    boolean selected, boolean focused, int row, int column) {
+                super.getTableCellRendererComponent(source, value, selected, focused,
+                        row, column);
+                setBackground(new Color(0xE1DFD5));
+                setFont(source.getFont().deriveFont(Font.BOLD));
+                setHorizontalAlignment(column == 0 ? SwingConstants.CENTER : SwingConstants.LEFT);
+                setBorder(raisedBorder(3, 5));
+                return this;
+            }
+        });
     }
 
     private JPanel createInspector() {
@@ -372,24 +397,28 @@ public class DictionaryPanel extends JPanel
         return inspector;
     }
 
-    private JPanel createTitledPanel(String title) {
+    static JPanel createTitledPanel(String title) {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
-        TitledBorder border = BorderFactory.createTitledBorder(
-                BorderFactory.createEtchedBorder(Color.WHITE, EDGE), title);
-        border.setTitleFont(new Font("Tahoma", Font.BOLD, 12));
-        panel.setBorder(BorderFactory.createCompoundBorder(border,
+        panel.setBorder(BorderFactory.createCompoundBorder(createTitledBorder(title),
                 BorderFactory.createEmptyBorder(2, 3, 3, 3)));
         return panel;
     }
 
-    private static Border raisedBorder(int vertical, int horizontal) {
+    static TitledBorder createTitledBorder(String title) {
+        TitledBorder border = BorderFactory.createTitledBorder(
+                BorderFactory.createEtchedBorder(Color.WHITE, EDGE), title);
+        border.setTitleFont(new Font("Tahoma", Font.BOLD, 12));
+        return border;
+    }
+
+    static Border raisedBorder(int vertical, int horizontal) {
         return BorderFactory.createCompoundBorder(
                 BorderFactory.createBevelBorder(BevelBorder.RAISED,
                         Color.WHITE, BEIGE, new Color(0x404040), EDGE),
                 BorderFactory.createEmptyBorder(vertical, horizontal, vertical, horizontal));
     }
 
-    private static Border sunkenBorder(int vertical, int horizontal) {
+    static Border sunkenBorder(int vertical, int horizontal) {
         return BorderFactory.createCompoundBorder(
                 BorderFactory.createBevelBorder(BevelBorder.LOWERED,
                         Color.WHITE, BEIGE, EDGE, GRID),
@@ -468,7 +497,7 @@ public class DictionaryPanel extends JPanel
                 showHistory();
                 break;
             case "QUIZ":
-                playQuiz();
+                showQuiz();
                 break;
             case "HELP":
                 JOptionPane.showMessageDialog(this,
@@ -481,10 +510,10 @@ public class DictionaryPanel extends JPanel
     }
 
     private void showAll() {
+        showView("DICTIONARY", DICTIONARY_TITLE);
         keywordField.setText("");
         results = service.getAllEntries();
         allButton.setText("Tất cả Slang (" + formatCount(results.size()) + ")");
-        allButton.setBackground(new Color(0xDCD8CB));
         refreshHistoryLabel();
         showPage(0);
     }
@@ -506,6 +535,12 @@ public class DictionaryPanel extends JPanel
         allButton.setBackground(BEIGE);
         refreshHistoryLabel();
         showPage(0);
+
+        String error = service.getSearchHistoryError();
+        if (error != null) {
+            JOptionPane.showMessageDialog(this, error, "Lịch sử tra cứu",
+                    JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     private void showRandom() {
@@ -587,21 +622,42 @@ public class DictionaryPanel extends JPanel
     }
 
     private void refreshHistoryLabel() {
-        historyButton.setText("Lịch sử tìm kiếm (" + service.getSearchHistory().size() + ")");
+        historyButton.setText("Lịch sử tìm kiếm (" + formatCount(service.getSearchHistoryCount()) + ")");
     }
 
     private void showHistory() {
-        List<String> history = service.getSearchHistory();
+        refreshHistoryLabel();
+        historyPanel.refresh();
+        showView("HISTORY", HISTORY_TITLE);
+    }
 
-        if (history.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Chưa có lịch sử tra cứu.");
-            return;
+    private void showQuiz() {
+        refreshHistoryLabel();
+        quizPanel.refreshQuestion();
+        showView("QUIZ", QUIZ_TITLE);
+    }
+
+    private void showView(String view, String title) {
+        viewLayout.show(views, view);
+        boolean dictionary = "DICTIONARY".equals(view);
+        boolean history = "HISTORY".equals(view);
+        boolean quiz = "QUIZ".equals(view);
+
+        toolbar.setVisible(dictionary);
+        allButton.setBackground(dictionary ? new Color(0xDCD8CB) : BEIGE);
+        historyButton.setBackground(history ? new Color(0xC7D7EC) : BEIGE);
+        historyButton.setForeground(history ? NAVY : Color.BLACK);
+        historyButton.setFont(historyButton.getFont().deriveFont(history ? Font.BOLD : Font.PLAIN));
+        quizButton.setBackground(quiz ? new Color(0xDCD8CB) : BEIGE);
+        quizButton.setBorder(quiz ? sunkenBorder(2, 7) : raisedBorder(2, 7));
+        updateTitle(title);
+    }
+
+    private void updateTitle(String title) {
+        java.awt.Window window = SwingUtilities.getWindowAncestor(this);
+        if (window instanceof JFrame) {
+            ((JFrame) window).setTitle(title);
         }
-
-        JScrollPane scroll = new JScrollPane(new JList<>(history.toArray(new String[0])));
-        scroll.setPreferredSize(new Dimension(320, 220));
-        JOptionPane.showMessageDialog(this, scroll, "Lịch sử tìm kiếm",
-                JOptionPane.PLAIN_MESSAGE);
     }
 
     private void showEntryDialog(SlangEntry current) {
@@ -733,53 +789,5 @@ public class DictionaryPanel extends JPanel
 
     private void showError(String title, Exception error) {
         JOptionPane.showMessageDialog(this, error.getMessage(), title, JOptionPane.ERROR_MESSAGE);
-    }
-
-    private void playQuiz() {
-        Object[] modes = { "Chọn nghĩa", "Chọn slang" };
-        int mode = JOptionPane.showOptionDialog(this, "Chọn kiểu câu hỏi", "Đố vui",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, modes, modes[0]);
-
-        if (mode < 0) {
-            return;
-        }
-
-        QuizQuestion question;
-        if (mode == 0) {
-            question = service.createWordQuiz();
-        } else {
-            question = service.createDefinitionQuiz();
-        }
-
-        if (question == null) {
-            JOptionPane.showMessageDialog(this, "Không đủ đáp án phân biệt để tạo câu hỏi.");
-            return;
-        }
-
-        JTextArea prompt = new JTextArea(question.getPrompt(), 2, 38);
-        configureTextArea(prompt);
-        prompt.setOpaque(false);
-        JList<String> answers = new JList<>(question.getChoices().toArray(new String[0]));
-        answers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        answers.setVisibleRowCount(4);
-
-        JPanel content = new JPanel(new BorderLayout(0, 7));
-        content.add(prompt, BorderLayout.PAGE_START);
-        content.add(new JScrollPane(answers), BorderLayout.CENTER);
-
-        while (JOptionPane.showConfirmDialog(this, content, "Đố vui Slang Word",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
-            int selected = answers.getSelectedIndex();
-
-            if (selected < 0) {
-                JOptionPane.showMessageDialog(this, "Hãy chọn một đáp án.");
-                continue;
-            }
-
-            String result = question.isCorrect(selected) ? "Chính xác!"
-                    : "Đáp án đúng: " + question.getCorrectAnswer();
-            JOptionPane.showMessageDialog(this, result);
-            return;
-        }
     }
 }

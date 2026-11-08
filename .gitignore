@@ -7,3 +7,6 @@ agent.md
 /bin/
 /out/
 /build/
+
+# Local search history
+/data/search-history.tsv
