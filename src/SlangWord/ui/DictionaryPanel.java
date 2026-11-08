@@ -663,33 +663,21 @@ public class DictionaryPanel extends JPanel
     private void showEntryDialog(SlangEntry current) {
         String title = current == null ? "Thêm từ mới" : "Chỉnh sửa slang";
         JTextField wordField = new JTextField(current == null ? "" : current.getWord(), 24);
-        JTextArea meaningField = new JTextArea(
-                current == null ? "" : String.join(" | ", current.getDefinitions()), 4, 24);
-        meaningField.setLineWrap(true);
-        meaningField.setWrapStyleWord(true);
+        List<String> initialDefinitions = current == null
+                ? Collections.emptyList() : current.getDefinitions();
+        DefinitionFieldsPanel meaningInput = new DefinitionFieldsPanel(initialDefinitions);
 
-        JPanel form = new JPanel(new BorderLayout(0, 7));
+        JPanel form = new JPanel(new BorderLayout(0, 9));
         JPanel wordInput = new JPanel(new BorderLayout(0, 2));
         wordInput.add(new JLabel("Slang Word"), BorderLayout.PAGE_START);
         wordInput.add(wordField, BorderLayout.CENTER);
-        JPanel meaningInput = new JPanel(new BorderLayout(0, 2));
-        meaningInput.add(new JLabel("Các nghĩa, cách nhau bằng |"), BorderLayout.PAGE_START);
-        meaningInput.add(new JScrollPane(meaningField), BorderLayout.CENTER);
         form.add(wordInput, BorderLayout.PAGE_START);
         form.add(meaningInput, BorderLayout.CENTER);
 
         while (JOptionPane.showConfirmDialog(this, form, title,
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
             String word = wordField.getText().trim();
-            List<String> definitions = new ArrayList<>();
-
-            for (String part : meaningField.getText().split("\\|")) {
-                String definition = part.trim();
-
-                if (!definition.isEmpty()) {
-                    definitions.add(definition);
-                }
-            }
+            List<String> definitions = meaningInput.getDefinitions();
 
             if (word.isEmpty() || definitions.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Cần nhập slang và ít nhất một nghĩa.");
