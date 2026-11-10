@@ -1,6 +1,6 @@
 # Compiled Java files
 *.class
-
+test
 agent.md
 
 # Java build output
