@@ -536,12 +536,6 @@ public class DictionaryPanel extends JPanel
         allButton.setBackground(BEIGE);
         refreshHistoryLabel();
         showPage(0);
-
-        String error = service.getSearchHistoryError();
-        if (error != null) {
-            JOptionPane.showMessageDialog(this, error, "Lịch sử tra cứu",
-                    JOptionPane.WARNING_MESSAGE);
-        }
     }
 
     private void showRandom() {

@@ -32,8 +32,8 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        String sourceFile = "data/slang_test.txt";
-        String savedFile = "data/dictionary-word-v2.dat";
+        String sourceFile = "data/slang.txt";
+        String savedFile = "data/dictionary-word-v3.dat";
 
         try {
             DictionaryService service;
@@ -54,8 +54,6 @@ public class Main {
                 service.save(savedFile);
                 System.out.println("Da tao va luu chi muc.");
             }
-
-            service.openSearchHistory("data/search-history.tsv");
 
             SwingUtilities.invokeLater(new Runnable() {
                 @Override

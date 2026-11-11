@@ -1,5 +1,7 @@
 package SlangWord;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class SlangEntry {
@@ -10,7 +12,7 @@ public class SlangEntry {
     public SlangEntry(long id, String word, List<String> definitions ) {
          this.id = id;
          this.word = word;
-         this. definitions = definitions;
+         this.definitions = Collections.unmodifiableList(new ArrayList<>(definitions));
     }
 
     public long getId() {

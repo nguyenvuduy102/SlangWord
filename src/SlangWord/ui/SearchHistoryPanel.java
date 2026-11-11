@@ -28,7 +28,6 @@ public class SearchHistoryPanel extends JPanel implements ActionListener {
 
     private final JLabel pageLabel = new JLabel();
     private final JLabel countLabel = new JLabel();
-    private final JLabel errorLabel = new JLabel();
     private final JButton first = createButton("[|<]", "FIRST");
     private final JButton previous = createButton("[<]", "PREVIOUS");
     private final JButton next = createButton("[>]", "NEXT");
@@ -56,10 +55,6 @@ public class SearchHistoryPanel extends JPanel implements ActionListener {
 
         add(createFilters(), BorderLayout.PAGE_START);
         add(createTablePanel(), BorderLayout.CENTER);
-
-        errorLabel.setForeground(new Color(0x800000));
-        errorLabel.setVisible(false);
-        add(errorLabel, BorderLayout.PAGE_END);
     }
 
     private JPanel createFilters() {
@@ -182,10 +177,6 @@ public class SearchHistoryPanel extends JPanel implements ActionListener {
                 filtered.add(entry);
             }
         }
-
-        String error = service.getSearchHistoryError();
-        errorLabel.setText(error);
-        errorLabel.setVisible(error != null);
 
         String count = String.format(Locale.US, "%,d", filtered.size());
         tableTitle.setTitle("Bảng Lịch sử Tra cứu (JTable / DefaultTableModel - "

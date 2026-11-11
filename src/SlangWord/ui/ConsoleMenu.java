@@ -480,10 +480,6 @@ public class ConsoleMenu {
 
         double milliseconds = (System.nanoTime() - start) / 1_000_000.0;
 
-        if (service.getSearchHistoryError() != null) {
-            System.err.println(service.getSearchHistoryError());
-        }
-
         if (results.isEmpty()) {
             System.out.println("Khong tim thay.");
         } else {

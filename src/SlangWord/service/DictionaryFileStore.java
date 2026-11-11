@@ -15,19 +15,21 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 final class DictionaryFileStore {
-    private static final int FILE_FORMAT_V2 = 0xD51A0002;
+    private static final int FILE_FORMAT_V3 = 0xD51A0003;
 
     private DictionaryFileStore() {
     }
 
     static void save(String filename, Map<Long, SlangEntry> entriesById,
-            Map<String, Set<Long>> wordIndex) throws IOException {
+            Map<String, Set<Long>> wordIndex, DefinitionTrigramIndex definitionIndex) throws IOException {
         Path target = Paths.get(filename).toAbsolutePath();
         Path temporary = Files.createTempFile(target.getParent(), "slang-", ".tmp");
 
@@ -36,7 +38,7 @@ final class DictionaryFileStore {
                     new BufferedOutputStream(new FileOutputStream(temporary.toFile())));
 
             try {
-                out.writeInt(FILE_FORMAT_V2);
+                out.writeInt(FILE_FORMAT_V3);
 
                 // Ghi cac ban ghi theo ID.
                 out.writeInt(entriesById.size());
@@ -60,6 +62,8 @@ final class DictionaryFileStore {
                         out.writeLong(id);
                     }
                 }
+
+                writeTrigramIndex(out, definitionIndex);
             } finally {
                 out.close();
             }
@@ -76,12 +80,12 @@ final class DictionaryFileStore {
     }
 
     static void load(String filename, Map<Long, SlangEntry> entriesById,
-            Map<String, Set<Long>> wordIndex) throws IOException {
+            Map<String, Set<Long>> wordIndex, DefinitionTrigramIndex definitionIndex) throws IOException {
         DataInputStream in = new DataInputStream(
                 new BufferedInputStream(new FileInputStream(filename)));
 
         try {
-            if (in.readInt() != FILE_FORMAT_V2) {
+            if (in.readInt() != FILE_FORMAT_V3) {
                 throw new IOException("Dinh dang chi muc khong hop le.");
             }
 
@@ -103,7 +107,7 @@ final class DictionaryFileStore {
             }
 
             int keyCount = readCount(in);
-            Set<Long> indexedIds = new LinkedHashSet<>();
+            Map<Long, Long> indexedIds = new HashMap<>();
 
             for (int i = 0; i < keyCount; i++) {
                 String key = in.readUTF();
@@ -115,8 +119,8 @@ final class DictionaryFileStore {
 
                 Set<Long> ids = new LinkedHashSet<>();
                 for (int j = 0; j < idCount; j++) {
-                    long id = in.readLong();
-                    if (!entriesById.containsKey(id) || !indexedIds.add(id)) {
+                    Long id = in.readLong();
+                    if (!entriesById.containsKey(id) || indexedIds.putIfAbsent(id, id) != null) {
                         throw new IOException("ID chi muc khong hop le: " + id);
                     }
                     ids.add(id);
@@ -128,8 +132,51 @@ final class DictionaryFileStore {
             if (indexedIds.size() != entryCount) {
                 throw new IOException("Chi muc thieu ban ghi.");
             }
+
+            readTrigramIndex(in, indexedIds, definitionIndex);
         } finally {
             in.close();
+        }
+    }
+
+    private static void writeTrigramIndex(DataOutputStream out,
+            DefinitionTrigramIndex index) throws IOException {
+        out.writeInt(index.getPostings().size());
+        for (Map.Entry<String, TreeSet<Long>> item : index.getPostings().entrySet()) {
+            out.writeUTF(item.getKey());
+            TreeSet<Long> posting = item.getValue();
+            out.writeInt(posting.size());
+            for (long id : posting) {
+                out.writeLong(id);
+            }
+        }
+    }
+
+    private static void readTrigramIndex(DataInputStream in, Map<Long, Long> indexedIds,
+            DefinitionTrigramIndex index) throws IOException {
+        int gramCount = readCount(in);
+        for (int i = 0; i < gramCount; i++) {
+            String gram = in.readUTF();
+            int idCount = readCount(in);
+            if (gram.codePointCount(0, gram.length()) != DefinitionTrigramIndex.GRAM_SIZE
+                    || idCount == 0 || idCount > indexedIds.size()
+                    || index.getPostings().containsKey(gram)) {
+                throw new IOException("Trigram khong hop le: " + gram);
+            }
+
+            TreeSet<Long> ids = new TreeSet<>();
+            long previousId = 0;
+            for (int j = 0; j < idCount; j++) {
+                long storedId = in.readLong();
+                // Reuse the ID object from the word index across all trigrams.
+                Long id = indexedIds.get(storedId);
+                if ((j > 0 && storedId <= previousId) || id == null) {
+                    throw new IOException("ID Trigram khong hop le: " + storedId);
+                }
+                ids.add(id);
+                previousId = storedId;
+            }
+            index.getPostings().put(gram, ids);
         }
     }
 

@@ -17,8 +17,20 @@ import java.util.Map;
 import java.util.Set;
 
 public class DictionaryService {
+    // Mỗi ID trỏ tới một bản ghi đầy đủ gồm slang và danh sách nghĩa.
+    // Ví dụ, ID 12 là LOL với nghĩa "Laugh out loud", ID 47 là LOL với nghĩa "Lots of love".
+    // <12, LOL` "Laugh out loud">
+    //<47, LOL ` "Lots of love">
     private final Map<Long, SlangEntry> entriesById = new HashMap<>();
+
+    // Khóa slang đã chuẩn hóa trỏ tới tập ID của các bản ghi cùng từ.
+    // Ví dụ, "lol" -> [12, 47]. Khi tra LOL, lấy hai bản ghi theo ID từ entriesById.
+    //<"lol", [12, 47]>
     private final Map<String, Set<Long>> wordIndex = new HashMap<>();
+    
+
+    private DefinitionTrigramIndex definitionIndex = new DefinitionTrigramIndex();
+
     private final SearchHistoryService history = new SearchHistoryService();
     private final QuizService quiz = new QuizService(entriesById, wordIndex);
 
@@ -35,10 +47,7 @@ public class DictionaryService {
             String key = normalize(entry.getWord());
             wordIndex.computeIfAbsent(key, word -> new LinkedHashSet<>()).add(id);
         }
-    }
-
-    public void openSearchHistory(String filename) {
-        history.openSearchHistory(filename);
+        definitionIndex.rebuild(entriesById.values());
     }
 
     public List<SearchHistoryEntry> getSearchHistory() {
@@ -49,9 +58,6 @@ public class DictionaryService {
         return history.getSearchHistoryCount();
     }
 
-    public String getSearchHistoryError() {
-        return history.getSearchHistoryError();
-    }
 
     public List<SlangEntry> searchByWord(String keyword) {
         List<SlangEntry> results = findByWord(keyword);
@@ -83,23 +89,11 @@ public class DictionaryService {
     }
 
     public List<SlangEntry> searchByDefinition(String keyword) {
-        List<SlangEntry> results = new ArrayList<>();
-
         if (keyword == null || keyword.trim().isEmpty()) {
-            return results;
+            return Collections.emptyList();
         }
 
-        String query = normalize(keyword);
-
-        for (SlangEntry entry : entriesById.values()) {
-            for (String definition : entry.getDefinitions()) {
-                if (definition.toLowerCase(Locale.ROOT).contains(query)) {
-                    results.add(entry);
-                    break;
-                }
-            }
-        }
-
+        List<SlangEntry> results = definitionIndex.search(normalize(keyword), entriesById);
         history.recordSearch(keyword, SearchHistoryEntry.Mode.DEFINITION, results);
         return results;
     }
@@ -137,17 +131,19 @@ public class DictionaryService {
         }
 
         SlangEntry newEntry = new SlangEntry(
-                id, displayWord, new ArrayList<>(definitions));
+                id, displayWord, definitions);
 
         Set<Long> ids = wordIndex.computeIfAbsent(
                 key, ignored -> new LinkedHashSet<>());
 
         entriesById.put(id, newEntry);
         ids.add(id);
+        replaceIndexedDefinitions(oldEntry, newEntry);
 
         try {
             save(savedFile);
         } catch (IOException e) {
+            replaceIndexedDefinitions(newEntry, oldEntry);
             if (oldEntry == null) {
                 entriesById.remove(id);
                 ids.remove(id);
@@ -184,7 +180,7 @@ public class DictionaryService {
         boolean keyChanged = !oldKey.equals(newKey);
 
         SlangEntry updatedEntry = new SlangEntry(
-                id, newWord.trim(), new ArrayList<>(newDefinitions));
+                id, newWord.trim(), newDefinitions);
 
         Set<Long> oldIds = wordIndex.get(oldKey);
 
@@ -204,9 +200,12 @@ public class DictionaryService {
                     newKey, ignored -> new LinkedHashSet<>()).add(id);
         }
 
+        replaceIndexedDefinitions(oldEntry, updatedEntry);
+
         try {
             save(savedFile);
         } catch (IOException e) {
+            replaceIndexedDefinitions(updatedEntry, oldEntry);
             entriesById.put(id, oldEntry);
 
             if (keyChanged) {
@@ -247,15 +246,27 @@ public class DictionaryService {
             wordIndex.put(key, remainingIds);
         }
 
+        definitionIndex.remove(entry);
+
         try {
             save(savedFile);
         } catch (IOException e) {
+            definitionIndex.add(entry);
             entriesById.put(id, entry);
             wordIndex.put(key, oldIds);
             throw e;
         }
 
         return entry;
+    }
+
+    private void replaceIndexedDefinitions(SlangEntry before, SlangEntry after) {
+        if (before != null) {
+            definitionIndex.remove(before);
+        }
+        if (after != null) {
+            definitionIndex.add(after);
+        }
     }
 
     public int resetToOriginal(String sourceFile, String savedFile)
@@ -277,6 +288,7 @@ public class DictionaryService {
 
         wordIndex.clear();
         wordIndex.putAll(original.wordIndex);
+        definitionIndex = original.definitionIndex;
 
         return entriesById.size();
     }
@@ -307,12 +319,13 @@ public class DictionaryService {
     }
 
     public void save(String filename) throws IOException {
-        DictionaryFileStore.save(filename, entriesById, wordIndex);
+        DictionaryFileStore.save(filename, entriesById, wordIndex, definitionIndex);
     }
 
     public static DictionaryService load(String filename) throws IOException {
         DictionaryService service = new DictionaryService();
-        DictionaryFileStore.load(filename, service.entriesById, service.wordIndex);
+        DictionaryFileStore.load(filename, service.entriesById,
+                service.wordIndex, service.definitionIndex);
         return service;
     }
 
