@@ -108,50 +108,15 @@ public class ConsoleMenu {
         Long overwriteId = null;
 
         if (!existing.isEmpty()) {
-            System.out.println("Slang da ton tai:");
-
-            for (SlangEntry entry : existing) {
-                System.out.println(entry);
-            }
-
-            System.out.println("1. Ghi de mot ban ghi");
-            System.out.println("2. Duplicate voi cung ten va ID moi");
-            System.out.println("0. Huy");
-            System.out.print("Chon: ");
-            String choice = keyboard.readLine();
-
-            if (choice == null || choice.trim().equals("0")) {
+            int choice = readDuplicateChoice(keyboard, existing);
+            if (choice == 0) {
                 return;
             }
-
-            switch (choice.trim()) {
-                case "1":
-                    if (existing.size() == 1) {
-                        overwriteId = existing.get(0).getId();
-                        break;
-                    }
-
-                    System.out.print("Nhap ID can ghi de: ");
-                    String idText = keyboard.readLine();
-
-                    if (idText == null) {
-                        return;
-                    }
-
-                    try {
-                        overwriteId = Long.parseLong(idText.trim());
-                    } catch (NumberFormatException e) {
-                        System.out.println("ID khong hop le.");
-                        return;
-                    }
-                    break;
-
-                case "2":
-                    break;
-
-                default:
-                    System.out.println("Lua chon khong hop le.");
+            if (choice == 1) {
+                overwriteId = readOverwriteId(keyboard, existing);
+                if (overwriteId == null) {
                     return;
+                }
             }
         }
 
@@ -181,6 +146,64 @@ public class ConsoleMenu {
         } catch (IOException e) {
             System.out.println("Luu that bai: " + e.getMessage());
         }
+    }
+
+    private int readDuplicateChoice(BufferedReader keyboard, List<SlangEntry> existing)
+            throws IOException {
+        System.out.println("Slang da ton tai:");
+
+        for (SlangEntry entry : existing) {
+            System.out.println(entry);
+        }
+
+        System.out.println("1. Ghi de mot ban ghi");
+        System.out.println("2. Duplicate voi cung ten va ID moi");
+        System.out.println("0. Huy");
+        System.out.print("Chon: ");
+        String choice = keyboard.readLine();
+
+        if (choice == null || choice.trim().equals("0")) {
+            return 0;
+        }
+
+        switch (choice.trim()) {
+            case "1":
+                return 1;
+            case "2":
+                return 2;
+            default:
+                System.out.println("Lua chon khong hop le.");
+                return 0;
+        }
+    }
+
+    private Long readOverwriteId(BufferedReader keyboard, List<SlangEntry> existing) throws IOException {
+        if (existing.size() == 1) {
+            return existing.get(0).getId();
+        }
+
+        System.out.print("Nhap ID can ghi de: ");
+        String text = keyboard.readLine();
+        if (text == null) {
+            return null;
+        }
+
+        long id;
+        try {
+            id = Long.parseLong(text.trim());
+        } catch (NumberFormatException e) {
+            System.out.println("ID khong hop le.");
+            return null;
+        }
+
+        for (SlangEntry entry : existing) {
+            if (entry.getId() == id) {
+                return id;
+            }
+        }
+
+        System.out.println("ID khong thuoc slang can ghi de.");
+        return null;
     }
 
     private void editSlang(BufferedReader keyboard) throws IOException {
@@ -279,9 +302,8 @@ public class ConsoleMenu {
         String newKey = service.Normalize(newWord);
 
         if (!oldKey.equals(newKey) && !service.findByWord(newWord).isEmpty()) {
-            System.out.print("Ten moi da ton tai. Tiep tuc? (y/n): ");
+            System.out.print("Ten moi da ton tai. Xac nhan doi ten va giu cac ban ghi cung ten? (y/n): ");
             String confirmation = keyboard.readLine();
-
             if (confirmation == null || !confirmation.trim().equalsIgnoreCase("y")) {
                 return;
             }

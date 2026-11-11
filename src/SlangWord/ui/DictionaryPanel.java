@@ -680,6 +680,7 @@ public class DictionaryPanel extends JPanel
 
             try {
                 List<SlangEntry> existing = service.findByWord(word);
+                boolean added = false;
 
                 if (current == null) {
                     Long overwriteId = null;
@@ -703,11 +704,21 @@ public class DictionaryPanel extends JPanel
                     }
 
                     service.addWord(word, definitions, overwriteId, savedFile);
+                    added = overwriteId == null;
                 } else {
-                    if (!service.Normalize(word).equals(service.Normalize(current.getWord()))
-                            && !existing.isEmpty()
-                            && !confirm("Tên mới đã tồn tại. Bạn muốn tiếp tục?")) {
-                        return;
+                    boolean renaming = !service.Normalize(word)
+                            .equals(service.Normalize(current.getWord()));
+
+                    if (renaming && !existing.isEmpty()) {
+                        Object[] options = { "Xác nhận đổi tên", "Hủy thay đổi" };
+                        int choice = JOptionPane.showOptionDialog(this,
+                                "Slang \"" + word + "\" đã có trong từ điển.\n"
+                                        + "Bạn có chắc muốn đổi tên và giữ các bản ghi cùng tên?",
+                                "Xác nhận đổi tên", JOptionPane.DEFAULT_OPTION,
+                                JOptionPane.WARNING_MESSAGE, null, options, options[1]);
+                        if (choice != 0) {
+                            return;
+                        }
                     }
 
                     service.editWord(current.getId(), word, definitions, savedFile);
@@ -715,6 +726,11 @@ public class DictionaryPanel extends JPanel
 
                 showAll();
                 showRandom();
+                if (added) {
+                    JOptionPane.showMessageDialog(this,
+                            "Đã thêm từ \"" + word + "\" thành công.",
+                            "Thêm từ mới", JOptionPane.INFORMATION_MESSAGE);
+                }
                 return;
             } catch (IOException | IllegalArgumentException e) {
                 showError("Không lưu được", e);

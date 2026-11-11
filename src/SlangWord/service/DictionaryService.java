@@ -162,8 +162,7 @@ public class DictionaryService {
     }
 
     public SlangEntry editWord(long id, String newWord,
-            List<String> newDefinitions, String savedFile)
-            throws IOException {
+            List<String> newDefinitions, String savedFile) throws IOException {
         SlangEntry oldEntry = entriesById.get(id);
 
         if (oldEntry == null) {
@@ -182,20 +181,11 @@ public class DictionaryService {
         SlangEntry updatedEntry = new SlangEntry(
                 id, newWord.trim(), newDefinitions);
 
-        Set<Long> oldIds = wordIndex.get(oldKey);
-
+        Set<Long> oldIds = null;
         entriesById.put(id, updatedEntry);
 
         if (keyChanged) {
-            Set<Long> remainingIds = new LinkedHashSet<>(oldIds);
-            remainingIds.remove(id);
-
-            if (remainingIds.isEmpty()) {
-                wordIndex.remove(oldKey);
-            } else {
-                wordIndex.put(oldKey, remainingIds);
-            }
-
+            oldIds = detachWordId(oldKey, id);
             wordIndex.computeIfAbsent(
                     newKey, ignored -> new LinkedHashSet<>()).add(id);
         }
@@ -223,6 +213,20 @@ public class DictionaryService {
         }
 
         return updatedEntry;
+    }
+
+    private Set<Long> detachWordId(String key, long id) {
+        Set<Long> previousIds = wordIndex.get(key);
+        Set<Long> remainingIds = new LinkedHashSet<>(previousIds);
+        remainingIds.remove(id);
+
+        if (remainingIds.isEmpty()) {
+            wordIndex.remove(key);
+        } else {
+            wordIndex.put(key, remainingIds);
+        }
+
+        return previousIds;
     }
 
     public SlangEntry deleteWord(long id, String savedFile) throws IOException {
